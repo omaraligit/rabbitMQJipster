@@ -1,5 +1,6 @@
 package com.mycompany.myapp.web.rest;
 
+import com.mycompany.myapp.QueueServicesApp;
 import com.mycompany.myapp.config.Constants;
 import com.mycompany.myapp.domain.User;
 import com.mycompany.myapp.repository.UserRepository;
@@ -18,6 +19,8 @@ import javax.validation.Valid;
 import javax.validation.constraints.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -86,6 +89,9 @@ public class UserResource {
     private final UserRepository userRepository;
 
     private final MailService mailService;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
     public UserResource(UserService userService, UserRepository userRepository, MailService mailService) {
         this.userService = userService;
@@ -168,7 +174,15 @@ public class UserResource {
         if (!onlyContainsAllowedProperties(pageable)) {
             return ResponseEntity.badRequest().build();
         }
-
+        rabbitTemplate.convertAndSend(
+            "spring-boot-exchange",
+            "foo.bar.baz",
+            "Hello from RabbitMQ!",
+            message -> {
+                message.getMessageProperties().getHeaders().put("coreID", "uuid-1234ASEW12-3342-1322");
+                return message;
+            }
+        );
         final Page<AdminUserDTO> page = userService.getAllManagedUsers(pageable);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
         return new ResponseEntity<>(page.getContent(), headers, HttpStatus.OK);

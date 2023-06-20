@@ -1,6 +1,11 @@
 # This configuration is intended for development purpose, it's **your** responsibility to harden it for production
 version: '3.8'
 services:
+  rabbitmq:
+    image: rabbitmq:management
+    ports:
+      - '5672:5672'
+      - '15672:15672'
   queueservices-mysql:
     image: mysql:8.0.30
     volumes:
